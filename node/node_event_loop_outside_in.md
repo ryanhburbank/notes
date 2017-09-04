@@ -10,6 +10,8 @@ There are many misconceptions about how Node actually works, and there are numer
 * There is no stack of events
 * Networking does not happen in the thread pool
 
+</br>
+
 Before we begin understanding how Node should be represented,
 we first need to understand some basics.
 
@@ -32,12 +34,16 @@ close(fd)
 
 A new developer may think that the above is an intensive process, as you're sending and receiving data to & from the network, but in reality, it is not. But why?
 
+</br>
+
 In the 90s computers learned a trick called __direct memory access__, which works something like this:
 1. Whenever your CPU (which runs your program) wants to do something with the hard disk or the network card, 
 2. It simply sends a command to some peripheral device and that device then beings to process that action with memory.
 3. With the process now being handled by the device, the CPU is then free to do other work.  
 4. At the moment the device's work is done, or it needs more data, etc, the device then send an interrupt to the CPU.
 5. Upon receiving an interrupt, the CPU immeditately jumps and goes to handle the interrupt (at the cost of forgetting where it was previously) 
+
+</br>
 
 __In Short, Major operating systems have been faking synchronous I/O for years__
 
@@ -47,28 +53,28 @@ How to we model the event loop? Here is the sequence of events:
 
 *__Note that event emitters are not in the loop__*
 
-1. index.js
+1. __index.js__
     * The node event loop always starts with the program, not a callback, but rather whatever is in the entry point of your program (such as index.js or main.js)
 
-2. setTimeout & setInterval
+2. __setTimeout & setInterval__
     * it will check if there are any timeouts or intervals throught libuv
     * if any are found, it will then go into your javascript and call the appropriate callbacks (callback loop sequenced below)
 
-3. network & disk & child process
+3. __network & disk & child process__
     * it will check if there is any disk, network, or child process activity through libuv
     * if any are found, it will then go into your javascript and call the appropriate callbacks (callback loop sequenced below)
 
-4. setImmediate
+4. __setImmediate__
     * it will check the setImmediate queue (the queue containing everything you did with setImmediate) through libuv
     * if any are found, it will then go into your javascript and call the appropriate callbacks (callback loop sequenced below))
 
-5. "close" events
+5. __"close" events__
     * internal phase in which node creates "close" events and cleans up open sockets and other such things
 
-6. decision point
+6. __decision point__
     * depending on the context, node & libuv will either continue with another iteration through the loop, or it will proceed to process#exit
 
-7. process#exit
+7. __process#exit__
     * if node has determined the loop is ready to be terminated, it fires the process#exit event
 
 
@@ -81,6 +87,7 @@ After each check in the event loop, the corresponding callbacks are fired by nod
 2. Node starts a loop to check for resolved promises, with the loop running until all promises have been resolved.
 3. Node starts a loop to check for nextTick callbacks, with the loop running until all nextTick callbacks have fired.
 
+</br>
 
 __Example 1:__
 
@@ -122,6 +129,8 @@ This call to the fs will cause the system to get a worker thread (there are gene
 
 Upon the work being complete, that worker thread will send a notification, which can then be picked up by the network, disk, & child process check, which will then fire the appropriate callback for that event.
 
+</br>
+
 Stated again in list form:
 1. A close event callback fires a write to the file system.
 2. The system assigns that write work to one of 4 worker threads.
@@ -132,9 +141,10 @@ Stated again in list form:
 </br>
 
 __Question: How Does Node know whether to exit or keep looping?__ 
+
 Essentially, everytime the program starts an operation (either through main execution or a callback), the ref count in the heap is incremented up by +1.
 
-When that event's compleition is detected by the loop's checks and the callback is fired, the ref count is decremented by -1.
+When that event's completion is detected by the loop's checks and the callback is fired, the ref count is decremented by -1.
 
 Upon the compleition of a loop, if the count is zero, the loop exits.
 
@@ -172,6 +182,8 @@ function eventLoopCheck() {
 }
 ```
 
+</br>
+
 #### Where Things Happen
 * __Kernal__
     * tcp / udp sockets, servers
@@ -194,6 +206,8 @@ function eventLoopCheck() {
     * child processes
     * console input
     * tcp servers (exceptional cases)
+
+</br>
 
 Node above all was built for scalability, node can handle thousands of open connections without breaking a sweat.
 
@@ -220,20 +234,26 @@ ___
 
 * In a multi-threated environoment, each thread will have its own independent stack, but all threads will share the same heap.  Thus a stack is thread specific, while a heap is application specific.
 
-* __Stack__
-    * Variables allocated on the stack are stored directly to the memory and access to this memory is very fast, with allocation dealt with when the program is compiled
+</br>
 
-    * When a function calls another function which in turn calls another, the execution of all those functions remains suspended until the very last function returns its value.
+__Stack__
 
-    * The stack is always reserved in LIFO order, making it simple to keep track of the stack, as freeing a block is nothing more than adjusting one pointer
+* Variables allocated on the stack are stored directly to the memory and access to this memory is very fast, with allocation dealt with when the program is compiled
 
-    * As stacks are thread specific, they are important to consider in exception handling and thread execution.
+* When a function calls another function which in turn calls another, the execution of all those functions remains suspended until the very last function returns its value.
 
-* __Heap__
-    * Variables allocated on the heap have their memory allocated at run time, and thus accessing this memory is a bit slower, at the benefit of allowing heap size to be limited only by the size of virtual memory.
+* The stack is always reserved in LIFO order, making it simple to keep track of the stack, as freeing a block is nothing more than adjusting one pointer
 
-    * Elements of the heap have no dependencies with each other and can always be accessed randomly at any time.
+* As stacks are thread specific, they are important to consider in exception handling and thread execution.
 
-    * You can allocate a block at any time and free it at any time. This flexibility comes at the cost of making it much more complex to track which parts of the heap are allocated or free at any given time.
+</br>
+
+__Heap__
+
+* Variables allocated on the heap have their memory allocated at run time, and thus accessing this memory is a bit slower, at the benefit of allowing heap size to be limited only by the size of virtual memory.
+
+* Elements of the heap have no dependencies with each other and can always be accessed randomly at any time.
+
+* You can allocate a block at any time and free it at any time. This flexibility comes at the cost of making it much more complex to track which parts of the heap are allocated or free at any given time.
 
 
