@@ -246,7 +246,6 @@ __Scale Solution: epoll -setup__
 
     while((int max = epoll_wait(eventfd, events, 10))) {
         /*
-            in the loop we once again block on the kernal
             we call epoll_wait, at which point we block and are descheduled and no CPU will be taken or given
 
             When the kernal sees something we were interested in happen (such as an incoming TCP socket),
