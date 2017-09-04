@@ -140,6 +140,64 @@ Stated again in list form:
 
 </br>
 
+___
+#### Advantages of Guaranteed Javascript Execution
+1. When you are in the midst of running a callback or any of your js code, you are guaranteed not to be interrupted by another event.
+2. Instead, that event will be dealt with on the next iteration through the event loop.
+
+This makes writing complex programs in Node.js simpler.
+
+In other languages, you do not have this guarantee, and one must take care to write threadsafe code that can be saftely interrupted by other threads as events continue to occur.  
+
+__Example 1:__
+```javascript
+var fs = require('fs');
+var eventNum = 0;
+
+fs.watch('target.txt', (event, filename) => {
+    eventNum++;
+    console.log(`Event #${eventNum}: ${event}, for file ${filename}`);
+});
+
+console.log('Watching target.txt for changes');
+```
+
+In other languages the above example would be considered dangerous code, as the callback function is changing the value of variable that is defined outside of the callback.  
+
+In a multi-threaded language, you might have other events occur that trigger actions that try to change the variable at the same time.
+
+In node these concurrency issues are not a problem, as demonstrated in the example below.
+
+__Example 2: __
+```javascript
+var fs = require('fs');
+var eventNum = 0;
+
+fs.watch('target.txt', (event, filename) => {
+    eventNum++;
+    console.log(`Event #${eventNum}: ${event}, for file ${filename}`);
+});
+
+fs.watch('target2.txt', (event, filename) => {
+    eventNum++;
+    console.log(`Event #${eventNum}: ${event}, for file ${filename}`);
+});
+
+console.log('Watching target.txt & target2.txt for changes');
+```
+
+Saving both files simultaneously you result in the following logs:
+```
+Watching target.txt and target2.txt for changes
+Event #1: change, for file target.txt
+Event #2: change, for file target2.txt
+```
+
+In another language that uses threads, if you were to do something like this you might see that the messages are jumbled together, with one message getting printed in the midst of another. This would be due to control switching between different threads as events occur and threads interrupt one another.
+
+</br>
+
+___
 __Question: How Does Node know whether to exit or keep looping?__ 
 
 Essentially, everytime the program starts an operation (either through main execution or a callback), the ref count in the heap is incremented up by +1.

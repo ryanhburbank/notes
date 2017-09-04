@@ -125,7 +125,6 @@ Hints:
 ***
 **Is node single threaded or multi-threaded?**
 
-
 _(bonus question: when?)_
 
 <br>
@@ -134,6 +133,7 @@ _(bonus question: when?)_
 **Why is Node said to "Scale Well"?**
 
 Low resource cost per connection
+
 <br>
 
 ***
