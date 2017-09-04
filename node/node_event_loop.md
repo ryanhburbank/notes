@@ -124,6 +124,7 @@ Hints:
 
 ***
 **Is node single threaded or multi-threaded?**
+Node's main event loop is single threaded, but the work it passes off (network, disk, file system, etc) is multithreaded.
 
 _(bonus question: when?)_
 
